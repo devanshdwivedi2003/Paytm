@@ -1,1 +1,1 @@
-export const JWT_SECRET=dfghjnbvcds12345
+export const JWT_SECRET="dfghjnbvcds12345"

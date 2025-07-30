@@ -1,15 +1,21 @@
-import express from 'express';
-import { rootRouter }  from './routes/index.js'
-import cors from  'cors';
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import { router as rootRouter } from "./routes/index.js";
 
-
-const app=express();
+const app = express();
 app.use(express.json());
 app.use(cors());
 
-app.use("/api/v1",rootRouter)
+// Connect to MongoDB
+mongoose.connect("mongodb://localhost:27017/banking-app", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-const PORT=3000;
-app.listen(PORT,()=>{
-          console.log(`listening to port ${PORT}`)
-})
+app.use("/api/v1", rootRouter);
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`listening to port ${PORT}`);
+});

@@ -1,10 +1,10 @@
 import express from "express";
 import zod from "zod";
 import jwt from "jsonwebtoken";
-import { User } from "../db";
-import JWT_SECRET from "../config";
-import { authMiddleware } from "../middleware"
-import { Account } from "../db";
+import { User, Account } from "../db.js";
+import { JWT_SECRET } from "../config.js";
+import { authMiddleware } from "../middleware.js";
+
 const router = express.Router();
 
 const signupBody = zod.object({
@@ -22,7 +22,7 @@ router.post("/signup", async (req, res) => {
     });
   }
 
-  const existingUser = User.findOne({
+  const existingUser = await User.findOne({
     username: req.body.username,
   });
   if (existingUser) {
@@ -38,12 +38,13 @@ router.post("/signup", async (req, res) => {
     lastName: req.body.lastName,
   });
 
-      await Account.create({
-        userid,
-        balance: 1 + Math.random() * 10000,
-      });
-
   const userid = user._id;
+
+  await Account.create({
+    userId: userid,
+    balance: 1 + Math.random() * 10000,
+  });
+
   const token = jwt.sign(
     {
       userid,
@@ -62,56 +63,61 @@ const signinBody = zod.object({
   password: zod.string(),
 });
 
-router.post("/signin", (req, res) => {
+router.post("/signin", async (req, res) => {
   const { success } = signinBody.safeParse(req.body);
   if (!success) {
     return res.status(411).json({
       message: "Email already taken / Incorrect inputs",
     });
   }
-  const user=User.findOne({
-          username:req.body.username,
-          password:req.body.password
-  })
 
-  if(user){
-          const token=jwt.sign({
-                    userid:user._id
-          },JWT_SECRET)
-          res.json({
-                    token
-          })
-          return
-}else{
-          res.json({
-                    message:"error while logging in"
-          })
-}
+  const user = await User.findOne({
+    username: req.body.username,
+    password: req.body.password,
+  });
 
+  if (user) {
+    const token = jwt.sign(
+      {
+        userid: user._id,
+      },
+      JWT_SECRET
+    );
+    res.json({
+      token,
+    });
+    return;
+  } else {
+    res.json({
+      message: "error while logging in",
+    });
+  }
 });
 
+const updatebody = zod.object({
+  password: zod.string().optional(),
+  firstName: zod.string().optional(),
+  lastName: zod.string().optional(),
+});
 
-const updatebody=zod.object({
-  password:zod.string().optional(),
-  firstName:zod.string().optional(),
-  lastName:zod.string().optional()
-})
+router.put("/", authMiddleware, async (req, res) => {
+  const { success } = updatebody.safeParse(req.body);
+  if (!success) {
+    res.status(411).json({
+      message: "error while updating the info",
+    });
+  }
 
-router.put("/",authMiddleware,async(req,res)=>{
-      const {success}=updatebody.safeParse(req.body);
-      if(!success){
-        res.status(411).json({
-          message:"error while updating the info"
-        })
-      }
-      await User.updateOne({
-        _id:req.userid
-      },req.body);
+  await User.updateOne(
+    {
+      _id: req.userid,
+    },
+    req.body
+  );
 
-      res.json({
-        message:"info updated successfully"
-      })
+  res.json({
+    message: "info updated successfully",
+  });
+});
 
-})
-
-export default router;
+export { router };
